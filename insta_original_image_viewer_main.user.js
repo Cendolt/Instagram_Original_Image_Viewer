@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name		Instagram Original Image Viewer (beta)
-// @version		0.1
+// @version		0.2
 // @description	Easily view Instagram images in their original size and save them on your computer
 // @author		Cendolt
 // @namespace	https://github.com/Cendolt/
