@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name		Instagram Original Image Viewer (beta)
-// @version		0.2
+// @version		0.2.1
 // @description	Easily view Instagram images in their original size and save them on your computer
 // @author		Cendolt
 // @namespace	https://github.com/Cendolt/
@@ -13,7 +13,7 @@
 
 var resizeObserver = new ResizeObserver(entries => {
 	entries.forEach (entry => {
-		var imgContainer = entry.target.classList.contains("_aa06") ? entry.target : null;
+		var imgContainer = entry.target.classList.contains("BTNCTN") ? entry.target : null;
 		if (imgContainer) {
 			var btn = imgContainer.querySelector('[class="IMBTN"]');
 			if (btn) {
@@ -23,21 +23,28 @@ var resizeObserver = new ResizeObserver(entries => {
 	});
 });
 
+function isValidContainer(imgContainer) {
+	return !(imgContainer.querySelector('img') == null
+		|| imgContainer.querySelector('li[role="menuitem"], div[role="button"]'));
+}
+
 function updateImgContainers() {
 	resizeObserver.disconnect();
-	const imgContainers = document.querySelectorAll('[class="_aa06"]');
-	imgContainers.forEach( imgContainer =>
-	{
-		imgContainer.addEventListener ("mouseenter", onImageMouseEnter, false );
-		imgContainer.addEventListener ("mouseleave", onImageMouseLeave, false );
-
-		resizeObserver.observe(imgContainer);
+	const imgContainers = document.querySelectorAll('article[role="presentation"] div[role="button"]:not([aria-disabled])');
+	imgContainers.forEach( imgContainer => 
+		{
+		if (isValidContainer(imgContainer)) {
+			imgContainer.addEventListener ("mouseenter", onImageMouseEnter, false );
+			imgContainer.addEventListener ("mouseleave", onImageMouseLeave, false );
+	
+			resizeObserver.observe(imgContainer);
+		}
 	});
 };
 
 function onImageMouseEnter(event) {
 	var imgContainer = event.target;
-	const img = imgContainer.querySelector('[class="_aagt"]');
+	const img = imgContainer.querySelector('img');
 	if (img != null) {
 		var imgSrc = img.getAttribute('src');
 		addDLBtnToImage(imgContainer, imgSrc);
@@ -46,7 +53,7 @@ function onImageMouseEnter(event) {
 
 function onImageMouseLeave(event) {
 	var imgContainer = event.target;
-	const img = imgContainer.querySelector('[class="_aagt"]');
+	const img = imgContainer.querySelector('img');
 	if (img != null) {
 		removeDLBtnFromImage(imgContainer);
 	}
@@ -58,11 +65,10 @@ function onImageMouseLeave(event) {
 * @param {String}	imgSrc			Link to the original image file
 */
 function addDLBtnToImage(imgContainer, imgSrc) {
-	var btnDiv = imgContainer.querySelector('[class="_aagw"]');
-
+	imgContainer.classList.add("BTNCTN");
 	var btn = imgContainer.querySelector('[class="IMBTN"]');
 	if (btn == null) {
-		btn = GM_addElement(btnDiv, 'button', {
+		btn = GM_addElement(imgContainer, 'button', {
 			class: 'IMBTN',
 			type: 'button',
 			textContent: 'View original'
@@ -71,13 +77,13 @@ function addDLBtnToImage(imgContainer, imgSrc) {
 		btn.addEventListener("click", onDlBtnClick, false);
 	}
 	if (imgSrc) {
-		btn.setAttribute("imgSrc", imgSrc);
+		btn.setAttribute("src", imgSrc);
 		btn.style["background-image"] = 'url("' + imgSrc +'")';
 	}
 	
 	var dummybtn = imgContainer.querySelector('[class="DUMMYBTN"]');
 	if (dummybtn == null) {
-		dummybtn = GM_addElement(btnDiv, 'div', {
+		dummybtn = GM_addElement(imgContainer, 'div', {
 			class: 'DUMMYBTN',
 			tabindex: '-1',
 			textContent: 'View original'
@@ -89,16 +95,15 @@ function addDLBtnToImage(imgContainer, imgSrc) {
 * @param {Element}	imgContainer	Image to remove the button from
 */
 function removeDLBtnFromImage(imgContainer) {
-	var btnDiv = imgContainer.querySelector('[class="_aagw"]');
-	
+	imgContainer.classList.remove("BTNCTN");
 	var btn = imgContainer.querySelector('[class="IMBTN"]');
 	if (btn) {
 		btn.removeEventListener("click", onDlBtnClick, false);
-		btnDiv.removeChild(btn);
+		imgContainer.removeChild(btn);
 	}
 	var dummybtn = imgContainer.querySelector('[class="DUMMYBTN"]');
 	if (dummybtn) {	
-		btnDiv.removeChild(dummybtn);
+		imgContainer.removeChild(dummybtn);
 	}
 }
 
@@ -106,7 +111,7 @@ function removeDLBtnFromImage(imgContainer) {
 * @param {MouseEvent}	event	Mouse click event
 */
 function onDlBtnClick(event) {
-	const imgSrc = event.target.getAttribute('imgSrc');
+	const imgSrc = event.target.getAttribute('src');
 	if (imgSrc)
 	{
 		window.open(imgSrc);
@@ -119,7 +124,7 @@ function onDocumentMutation(changes, observer) {
 
 window.addEventListener('load', function(){
 	GM_addStyle(`
-	._aagw .DUMMYBTN, ._aagw .IMBTN{
+	.BTNCTN .DUMMYBTN, .BTNCTN .IMBTN{
 		--BTN_margin: 4px;
 		--BTN_padding: 3px 8px;
 		--BTN_radius: 25px;
@@ -136,7 +141,7 @@ window.addEventListener('load', function(){
 		border-radius: var(--BTN_radius);
 	}
 
-    ._aagw .DUMMYBTN{
+    .BTNCTN .DUMMYBTN{
 		color: transparent;
 		background: rgba(255,255,255,.8);
 		box-shadow: 0px 0px 3px rgba(38,38,38,1);
@@ -144,7 +149,7 @@ window.addEventListener('load', function(){
 		z-index: 3;
 	}
 
-	._aagw .IMBTN{
+	.BTNCTN .IMBTN{
 		--BTN_bg_sizes: 100%;
 		cursor: pointer;
 
@@ -161,22 +166,22 @@ window.addEventListener('load', function(){
 		z-index: 4;
 	}
 
-    ._aagw .IMBTN:hover ~ .DUMMYBTN{
+    .BTNCTN .IMBTN:hover ~ .DUMMYBTN{
 		--BTN_margin: 3px;
 		--BTN_padding: 4px 9px;
 	}
 
-	._aagw .IMBTN:hover{
+	.BTNCTN .IMBTN:hover{
 		
 	}
 
-	._aagw .IMBTN:active ~ .DUMMYBTN{
+	.BTNCTN .IMBTN:active ~ .DUMMYBTN{
 		background: rgba(255,255,255,0.9);
 		--BTN_margin: 4px;
 		--BTN_padding: 3px 8px;
 	}
 
-	._aagw .IMBTN:active{
+	.BTNCTN .IMBTN:active{
 		-webkit-text-fill-color: rgba(38,38,38,0.75);
 	}
 
