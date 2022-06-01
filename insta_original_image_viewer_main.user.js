@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name		Instagram Original Image Viewer (beta)
-// @version		0.2.1
+// @version		0.2.2
 // @description	Easily view Instagram images in their original size and save them on your computer
 // @author		Cendolt
 // @namespace	https://github.com/Cendolt/
@@ -13,51 +13,38 @@
 
 var resizeObserver = new ResizeObserver(entries => {
 	entries.forEach (entry => {
-		var imgContainer = entry.target.classList.contains("BTNCTN") ? entry.target : null;
-		if (imgContainer) {
-			var btn = imgContainer.querySelector('[class="IMBTN"]');
+		if (entry.target.classList.contains("BTNCTN")) {
+			var btn = entry.target.querySelector('[class="IMBTN"]');
 			if (btn) {
-				btn.style.setProperty("--BTN_bg_sizes", imgContainer.offsetWidth + "px");
+				btn.style.setProperty("--BTN_bg_sizes", entry.contentRect.width + "px");
 			}	
 		}
 	});
 });
 
 function isValidContainer(imgContainer) {
-	return !(imgContainer.querySelector('img') == null
+	return !(imgContainer.querySelector('img') == null 
 		|| imgContainer.querySelector('li[role="menuitem"], div[role="button"]'));
 }
 
-function updateImgContainers() {
-	resizeObserver.disconnect();
-	const imgContainers = document.querySelectorAll('article[role="presentation"] div[role="button"]:not([aria-disabled])');
-	imgContainers.forEach( imgContainer => 
-		{
-		if (isValidContainer(imgContainer)) {
-			imgContainer.addEventListener ("mouseenter", onImageMouseEnter, false );
-			imgContainer.addEventListener ("mouseleave", onImageMouseLeave, false );
-	
+function updateImgContainers(node) {
+	//resizeObserver.disconnect();
+	const imgContainers = node.querySelectorAll('article[role="presentation"] div[role="button"]:not([aria-disabled])');
+	imgContainers.forEach( imgContainer => {
+		if (isValidContainer(imgContainer) && !imgContainer.classList.contains("BTNCTN")) {	
+			new MutationObserver( (mutations, observer) => {
+				imgSrc = imgContainer.querySelector('img').getAttribute('src');
+				if (imgSrc != null) {
+					addDLBtnToImage(imgContainer, imgSrc);	
+					observer.disconnect();
+				}
+			}).observe(imgContainer, {subtree: true, attributeFilter: ["class", "src"]});
+			imgContainer.classList.add("BTNCTN");
+
 			resizeObserver.observe(imgContainer);
 		}
 	});
 };
-
-function onImageMouseEnter(event) {
-	var imgContainer = event.target;
-	const img = imgContainer.querySelector('img');
-	if (img != null) {
-		var imgSrc = img.getAttribute('src');
-		addDLBtnToImage(imgContainer, imgSrc);
-	}
-}
-
-function onImageMouseLeave(event) {
-	var imgContainer = event.target;
-	const img = imgContainer.querySelector('img');
-	if (img != null) {
-		removeDLBtnFromImage(imgContainer);
-	}
-}
 
 /*
 * @description Add a "View original" button to the image 
@@ -65,7 +52,6 @@ function onImageMouseLeave(event) {
 * @param {String}	imgSrc			Link to the original image file
 */
 function addDLBtnToImage(imgContainer, imgSrc) {
-	imgContainer.classList.add("BTNCTN");
 	var btn = imgContainer.querySelector('[class="IMBTN"]');
 	if (btn == null) {
 		btn = GM_addElement(imgContainer, 'button', {
@@ -74,13 +60,11 @@ function addDLBtnToImage(imgContainer, imgSrc) {
 			textContent: 'View original'
 		});
 		btn.style.setProperty("--BTN_bg_sizes", imgContainer.offsetWidth + "px");
-		btn.addEventListener("click", onDlBtnClick, false);
-	}
-	if (imgSrc) {
 		btn.setAttribute("src", imgSrc);
 		btn.style["background-image"] = 'url("' + imgSrc +'")';
+		btn.addEventListener("click", onDlBtnClick, false);
 	}
-	
+
 	var dummybtn = imgContainer.querySelector('[class="DUMMYBTN"]');
 	if (dummybtn == null) {
 		dummybtn = GM_addElement(imgContainer, 'div', {
@@ -95,7 +79,6 @@ function addDLBtnToImage(imgContainer, imgSrc) {
 * @param {Element}	imgContainer	Image to remove the button from
 */
 function removeDLBtnFromImage(imgContainer) {
-	imgContainer.classList.remove("BTNCTN");
 	var btn = imgContainer.querySelector('[class="IMBTN"]');
 	if (btn) {
 		btn.removeEventListener("click", onDlBtnClick, false);
@@ -118,8 +101,14 @@ function onDlBtnClick(event) {
 	}
 }
 
-function onDocumentMutation(changes, observer) {
-	updateImgContainers();
+function onDocumentMutation(mutations, observer) {
+	mutations.forEach(mutation => {
+		if (mutation.type == 'childList') {
+			if (mutation.target.querySelector('img') != null) {
+				updateImgContainers(document);
+			}
+		}
+	});
 }
 
 window.addEventListener('load', function(){
@@ -139,6 +128,12 @@ window.addEventListener('load', function(){
 		margin: var(--BTN_margin);
 		padding: var(--BTN_padding);
 		border-radius: var(--BTN_radius);
+
+		visibility: hidden;
+	}
+
+	.BTNCTN:hover .DUMMYBTN, .BTNCTN:hover .IMBTN{
+		visibility: visible;
 	}
 
     .BTNCTN .DUMMYBTN{
@@ -186,7 +181,8 @@ window.addEventListener('load', function(){
 	}
 
     `);
-	var observer = new MutationObserver(onDocumentMutation);
 
-	observer.observe(document, {childList: true, subtree: true});
+	var mutationObserver = new MutationObserver(onDocumentMutation);
+
+	mutationObserver.observe(document.querySelector("body"), {childList: true, subtree: true});
 }, false);
