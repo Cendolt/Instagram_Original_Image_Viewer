@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name		Instagram Original Image Viewer (beta)
-// @version		0.2.3
+// @version		0.2.4
 // @description	Easily view Instagram images in their original size and save them on your computer
 // @author		Cendolt
 // @namespace	https://github.com/Cendolt/
@@ -9,6 +9,8 @@
 // @run-at 		document-idle
 // @grant		GM_addStyle
 // @grant		GM_addElement
+// @grant		GM_getResourceText
+// @resource	ioiv_style /assets/style/ioiv_style.css
 // ==/UserScript==
 
 /**
@@ -147,75 +149,7 @@ function onDocumentMutation(mutations, observer) {
 }
 
 window.addEventListener('load', function(){
-	GM_addStyle(`
-	.BTNCTN .DUMMYBTN, .BTNCTN .IMBTN{
-		--BTN_margin: 4px;
-		--BTN_padding: 3px 8px;
-		--BTN_radius: 25px;
-
-		position: absolute;
-		right: 0;
-		bottom: 0;
-		width:fit-content;
-		font-weight: var(--font-weight-system-semibold);
-		text-align: center;
-
-		margin: var(--BTN_margin);
-		padding: var(--BTN_padding);
-		border-radius: var(--BTN_radius);
-
-		visibility: hidden;
-	}
-
-	.BTNCTN:hover .DUMMYBTN, .BTNCTN:hover .IMBTN{
-		visibility: visible;
-	}
-
-    .BTNCTN .DUMMYBTN{
-		color: transparent;
-		background: rgba(255,255,255,.8);
-		box-shadow: 0px 0px 3px rgba(38,38,38,1);
-
-		z-index: 3;
-	}
-
-	.BTNCTN .IMBTN{
-		--BTN_bg_sizes: 100%;
-		cursor: pointer;
-
-		border: 0px solid rgba(255,255,255,0.0);
-
-		background-position: bottom calc(0px - var(--BTN_margin))
-							 right calc(0px - var(--BTN_margin));
-		background-size: var(--BTN_bg_sizes) auto;
-		background-repeat: no-repeat;
-		background-clip: text;
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: rgba(38,38,38,0.25);
-
-		z-index: 4;
-	}
-
-    .BTNCTN .IMBTN:hover ~ .DUMMYBTN{
-		--BTN_margin: 3px;
-		--BTN_padding: 4px 9px;
-	}
-
-	.BTNCTN .IMBTN:hover{
-		
-	}
-
-	.BTNCTN .IMBTN:active ~ .DUMMYBTN{
-		background: rgba(255,255,255,0.9);
-		--BTN_margin: 4px;
-		--BTN_padding: 3px 8px;
-	}
-
-	.BTNCTN .IMBTN:active{
-		-webkit-text-fill-color: rgba(38,38,38,0.75);
-	}
-
-    `);
+	GM_addStyle(GM_getResourceText("ioiv_style"));
 
 	var mutationObserver = new MutationObserver(onDocumentMutation);
 
