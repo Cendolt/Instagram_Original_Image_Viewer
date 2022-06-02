@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name		Instagram Original Image Viewer (beta)
-// @version		0.2.2
+// @version		0.2.3
 // @description	Easily view Instagram images in their original size and save them on your computer
 // @author		Cendolt
 // @namespace	https://github.com/Cendolt/
@@ -11,6 +11,9 @@
 // @grant		GM_addElement
 // ==/UserScript==
 
+/**
+* @desc 	Observe image container resize event to update transparent text background image size
+*/
 var resizeObserver = new ResizeObserver(entries => {
 	entries.forEach (entry => {
 		if (entry.target.classList.contains("BTNCTN")) {
@@ -22,36 +25,65 @@ var resizeObserver = new ResizeObserver(entries => {
 	});
 });
 
-function isValidContainer(imgContainer) {
-	return !(imgContainer.querySelector('img') == null 
-		|| imgContainer.querySelector('li[role="menuitem"], div[role="button"]'));
+/**
+* @desc 	Check if element is a valid image container
+* @param 	{Element}	element	- Element to check validity for
+* @returns 	{bool}		true:valid false:invalid
+*/
+function isValidContainer(element) {
+	return !(element.querySelector('img') == null 
+		|| element.querySelector('li[role="menuitem"], div[role="button"]'));
 }
 
+/**
+* @desc 	Update the source image url 
+* @param 	{Element}	imgContainer - Image container for which to update button image source
+* @param 	{String}	imgSrc - URL to the original image source
+*/
+function updateImageLink(imgContainer, imgSrc) {
+	var btn = imgContainer.querySelector('[class="IMBTN"]');
+	if (btn != null) {
+		btn.setAttribute("src", imgSrc);
+		btn.style["background-image"] = 'url("' + imgSrc +'")';
+	}
+}
+
+/**
+* @desc 	Search for image containers within node and add image download buttons to valid ones
+* @param 	{Node}	node - Node to search for image containers
+*/
 function updateImgContainers(node) {
-	//resizeObserver.disconnect();
 	const imgContainers = node.querySelectorAll('article[role="presentation"] div[role="button"]:not([aria-disabled])');
 	imgContainers.forEach( imgContainer => {
 		if (isValidContainer(imgContainer) && !imgContainer.classList.contains("BTNCTN")) {	
-			new MutationObserver( (mutations, observer) => {
-				imgSrc = imgContainer.querySelector('img').getAttribute('src');
-				if (imgSrc != null) {
-					addDLBtnToImage(imgContainer, imgSrc);	
-					observer.disconnect();
-				}
-			}).observe(imgContainer, {subtree: true, attributeFilter: ["class", "src"]});
 			imgContainer.classList.add("BTNCTN");
-
 			resizeObserver.observe(imgContainer);
+
+			addDLBtnToImage(imgContainer);
+			imgSrc = imgContainer.querySelector('img').getAttribute('src');
+			if (imgSrc != null) {
+				updateImageLink(imgContainer, imgSrc);
+			}
+
+			new MutationObserver( (mutations, observer) => {
+				mutations.forEach(mutation => {
+					if (mutation.attributeName == "src") {
+						imgSrc = mutation.target.getAttribute(mutation.attributeName);
+						if (imgSrc != null && imgSrc != mutation.oldValue) {
+							updateImageLink(imgContainer, imgSrc);
+						}
+					}
+				});
+			}).observe(imgContainer.querySelector('img'), {subtree: true, attributeFilter: ["src"], attributeOldValue: true});
 		}
 	});
 };
 
-/*
-* @description Add a "View original" button to the image 
-* @param {Element}	imgContainer	Image for which to add the button
-* @param {String}	imgSrc			Link to the original image file
+/**
+* @desc 	Add a "View original" button to the image 
+* @param 	{Element}	imgContainer - Image container for which to add the button
 */
-function addDLBtnToImage(imgContainer, imgSrc) {
+function addDLBtnToImage(imgContainer) {
 	var btn = imgContainer.querySelector('[class="IMBTN"]');
 	if (btn == null) {
 		btn = GM_addElement(imgContainer, 'button', {
@@ -60,8 +92,6 @@ function addDLBtnToImage(imgContainer, imgSrc) {
 			textContent: 'View original'
 		});
 		btn.style.setProperty("--BTN_bg_sizes", imgContainer.offsetWidth + "px");
-		btn.setAttribute("src", imgSrc);
-		btn.style["background-image"] = 'url("' + imgSrc +'")';
 		btn.addEventListener("click", onDlBtnClick, false);
 	}
 
@@ -75,8 +105,9 @@ function addDLBtnToImage(imgContainer, imgSrc) {
 	}
 }
 
-/*
-* @param {Element}	imgContainer	Image to remove the button from
+/**
+* @desc 	Remove "View original" button from image container
+* @param 	{Element}	imgContainer - Image container to remove the button from
 */
 function removeDLBtnFromImage(imgContainer) {
 	var btn = imgContainer.querySelector('[class="IMBTN"]');
@@ -90,8 +121,9 @@ function removeDLBtnFromImage(imgContainer) {
 	}
 }
 
-/*
-* @param {MouseEvent}	event	Mouse click event
+/**
+* @desc 	Open image in a new tab on "View original" button click
+* @param 	{MouseEvent}	event - Mouse click event
 */
 function onDlBtnClick(event) {
 	const imgSrc = event.target.getAttribute('src');
@@ -101,6 +133,9 @@ function onDlBtnClick(event) {
 	}
 }
 
+/**
+* @desc 	Observe DOM mutations for nodes containing images
+*/
 function onDocumentMutation(mutations, observer) {
 	mutations.forEach(mutation => {
 		if (mutation.type == 'childList') {
