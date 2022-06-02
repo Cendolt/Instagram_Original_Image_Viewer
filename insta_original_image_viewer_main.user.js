@@ -10,7 +10,7 @@
 // @grant		GM_addStyle
 // @grant		GM_addElement
 // @grant		GM_getResourceText
-// @resource	./ioiv_style /assets/style/ioiv_style.css
+// @resource	ioiv_style ./assets/style/ioiv_style.css
 // ==/UserScript==
 
 /**
